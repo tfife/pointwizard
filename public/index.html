@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Point Wizard</title>
+    <style>
+        .games_list {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        .game_card {
+            border: 1px solid orange;
+            width: 300px;
+            margin: 20px;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(() => {
+            $('#allGames').click(() => {
+                $.ajax({
+                    url: 'games/',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: (data) => {
+                        console.log('ajax success!', data);
+                        $.each(data, (i, item) => {
+                            $('#games_list').append('<div class="game_card">' + item.title + '</div>');
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Games</h1>
+    <button id="allGames">Get Games List</button>
+    <div id="games_list"></div>
+
+</body>
+
+
+</html>
