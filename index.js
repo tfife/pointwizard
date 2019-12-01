@@ -16,11 +16,70 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 })
 app.get("/games", getGames);
+app.post("/games/create", createGame);
+app.get("/games/players/:id", getPlayers);
 
 //get list of games
 function getGames(req, res) {
     const id = 1;
-    var sql = "SELECT game_id, title FROM game WHERE creator = " + id;
+    var sql = "SELECT game_id, title FROM game WHERE creator = " + id + " ORDER BY game_id DESC";
+    pool.query(sql, function(err, results) {
+        //if an error occurred...
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+        }
+        //log this to the console for debugging
+        //console.log(results.rows);
+        res.json(results.rows);
+    })
+    //console.log("Getting games for id: " + id);
+}
+
+//create a new game
+function createGame(req, res) {
+    console.log("Title: " + req.body.title);
+    console.log("Players: " + req.body.players);
+    var result;
+    var game_id;
+    if(req.body.title)
+    {
+        var sql = "INSERT INTO game(title, creator) VALUES ('" + req.body.title + "', 1) RETURNING game_id";
+        pool.query(sql, (err, results) => {
+            //if an error occurred...
+            if (err) {
+                console.log("Error in query: ");
+                console.log(err);
+            } else {
+                game_id = results.rows[0].game_id;
+                if (req.body.players)
+                {
+                    var sql = "INSERT INTO player(player_name, game, color) VALUES";
+                    req.body.players.forEach( (item, index) => {
+                        sql = sql.concat("('"+ item + "', " + game_id + ", '" + req.body.colors[index] + "'), ");
+                    })
+                    //remove last comma and space
+                    sql = sql.slice(0, -2);
+                    console.log(sql);
+                    pool.query(sql, (err, results) => {
+                        if (err) {
+                            console.log("Error in query: ");
+                            console.log(err);
+                        }
+                    })
+                }
+            }
+        });
+        result = {success: true};
+    } else {
+        result = {success: false};
+    }
+    res.json(result);
+}
+
+function getPlayers(req, res) {
+    const id = req.params.id;
+    var sql = "SELECT player_id, player_name, score, color FROM player WHERE game = " + id;
     pool.query(sql, function(err, results) {
         //if an error occurred...
         if (err) {
@@ -31,7 +90,6 @@ function getGames(req, res) {
         console.log(results.rows);
         res.json(results.rows);
     })
-    //console.log("Getting games for id: " + id);
-}
 
+}
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));

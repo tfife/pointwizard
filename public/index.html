@@ -2,44 +2,135 @@
 <html>
 
 <head>
+    <link rel="stylesheet" type="text/css" href="main.css">
+    <meta charset="UTF-8">
     <title>Point Wizard</title>
-    <style>
-        .games_list {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-        }
-        .game_card {
-            border: 1px solid orange;
-            width: 300px;
-            margin: 20px;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Select from a list of games">
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
     <script type="text/javascript">
         $(document).ready(() => {
-            $('#allGames').click(() => {
-                $.ajax({
-                    url: 'games/',
-                    type: 'GET',
-                    dataType: 'json',
-                    success: (data) => {
-                        console.log('ajax success!', data);
-                        $.each(data, (i, item) => {
-                            $('#games_list').append('<div class="game_card">' + item.title + '</div>');
-                        });
-                    }
-                });
+            $.ajax({
+                url: 'games/',
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    console.log('ajax success!', data);
+                    $.each(data, (i, item) => {
+                        $('#games_list').append('<button class="game_card" onclick=enterGame(' + item.game_id + ')><span>' + item.title + '</span></button>');
+                    });
+                }
             });
         });
+        function showGameCreator() {
+            $('#create_game_wrapper').css('display', 'block');
+            $('#main_content').addClass('blur');
+        }
+        var numPlayers = 1;
+        function addPlayer() {
+            numPlayers += 1;
+            $('#extraPlayers').append('<label>Player #' + numPlayers + ' Name</label>'
+            + '<br><input class="player" type="text" value="Player ' + numPlayers + '" style="font-size: 20px">'
+            + ' <input class="color" type="color" value="#ff00ff"><br><br>');
+            console.log(numPlayers);
+        }
+        function exitCreator() {
+            $('#create_game_wrapper').css('display', 'none');
+            $('#form').html('<label>Title</label><br>'
+                    + '<input id="title" name="title" type="text" value="My Game" style="font-size: 20px; width: 300px"><br><br>'
+                    + '<label>Player #1 Name</label><br>'
+                    + '<input class="player" type="text" value="Player 1" style="font-size: 20px">'
+                    + '<input class="color" type="color" value="#ff00ff">'
+                    + '<br><br>'
+                    + '<div id="extraPlayers"></div>'
+                    + '<button onclick=addPlayer() style="position: absolute; left: 230px">Add Player</button>'
+                    + '<button id="makeGame_button" onclick=makeGame()>Create Game</button>')
+            $('#main_content').removeClass('blur');
+        }
+        function enterGame(game_id = 1) {
+            console.log ("starting a game");
+            $('#main_content').css('display', 'none');
+            $('#gameScreen').css('display', 'block');
+        }
+        function leaveGame() {
+            console.log ("leaving the game");
+            $('#main_content').css('display', 'block');
+            $('#gameScreen').css('display', 'none');
+        }
+
+        function makeGame() {
+            console.log("Making game");
+
+            exitCreator();
+
+            var players= $(".player").map(function() {
+                return $(this).val();
+            }).get();
+            var colors= $(".color").map(function() {
+                return $(this).val();
+            }).get();
+
+            console.log(players);
+            console.log(colors);
+            console.log("Title:" + $('title').val());
+            
+            $.ajax({
+                url: 'games/create/',
+                type: 'POST',
+                dataType: 'json',
+                data: { 
+                    title: $('#title').val(),
+                    players: players,
+                    colors: colors
+                },
+                success: (data) => {
+                    console.log('create success!', data);
+                    console.log("going to callback function");
+                    enterGame();
+                }
+            });
+        }
     </script>
 </head>
 
 <body>
-    <h1>Games</h1>
-    <button id="allGames">Get Games List</button>
-    <div id="games_list"></div>
+    <div id="main_content" class="">
+        <h1>Point Wizard - My Games</h1>
+        <button id="addGame" onclick = showGameCreator()>+ New Game</button>
+        <div id="games_list"></div>
+    </div>
+    <div id="create_game_wrapper">
+        <div id="create_game">
+            <h1 style="text-align: center">Create a Game</h1>
+            <button id="exitCreator" onclick=exitCreator()>X</button>
+                <div id="form">
+                    <label>Title</label><br>
+                    <input id="title" name="title" type="text" value="My Game" style="font-size: 20px; width: 300px"><br><br>
+                    <label>Player #1 Name</label><br>
+                    <input class="player" type="text" value="Player 1" style="font-size: 20px">
+                    <input class="color" type="color" value="#ff00ff">
+                    <br><br>
+                    <div id="extraPlayers"></div>
+                    <button onclick=addPlayer() style="position: absolute; left: 230px">Add Player</button>
+                    <button onclick=makeGame() id="makeGame_button">Create Game</button>
+                </div>
+        </div>
+    </div>
+    <div id="gameScreen">
+        <div id="gameBoard">
+            <h1>Game is loading...</h1>
+            <p>(It's not really, I just haven't done this part yet...)</p>
+            <div id="controlBox">
+                <div class="playerBox"></div>
+                <div class="playerBox"></div>
+                <div class="playerBox"></div>
+            </div>
+            <button id="exitGame" onclick=leaveGame()>X</button>
+        </div>
+
+    </div>
 
 </body>
 
