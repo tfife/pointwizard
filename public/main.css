@@ -3,8 +3,13 @@ html {
     color: white;
     font-family: sans-serif;
 }
+#loginScreen {
+    margin: 0 10%;
+}
 #main_content {
     margin: 0 10%;
+    display: none;
+    position: relative;
 }
 .blur {
     -webkit-filter: blur(2px);
@@ -13,6 +18,13 @@ html {
     -ms-filter: blur(2px);
     filter: blur(2px);
 }
+
+.logout_button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
 #games_list {
     font-size: 20px;
     display: flex;
@@ -76,7 +88,7 @@ html {
     border-radius: 10px;
     width:90%;
 }
-#makeGame_button:hover, #exitCreator:hover, #exitGame:hover {
+#makeGame_button:hover, #exitCreator:hover {
     border: 1px solid rgb(145, 245, 245);
     color: rgb(145, 245, 245);
 }
@@ -131,8 +143,29 @@ html {
     top: 30px; 
     right: 30px;
     font-size: 30px;
-    color: orange;
+    color: rgb(145, 245, 245);
     background-color:rgb(30,30,30);
-    border: 1px solid orange;
+    border: 1px solid rgb(145, 245, 245);
     border-radius: 10px;
+}
+#exitGame:hover {
+    border: 1px solid orange;
+    color: orange;
+}
+
+.scoreChange {
+    width: 70px;
+    height: 50px;
+    font-size: 30px;
+    text-align: center;
+    margin: 10px;
+}
+
+select, .operate {
+    width: 80px;
+    height: 50px;
+    font-size: 20px;
+    color: white;
+    text-shadow: 0 0 3px black;
+    text-align: center;
 }

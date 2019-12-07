@@ -11,7 +11,28 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
     <script type="text/javascript">
+        var id = -1;
+        var guestTitle = '';
+        var guestPlayerNames = [];
+        var guestColors = [];
+        var guestScores = [];
+
         $(document).ready(() => {
+            $.ajax({
+                url: 'id/',
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    console.log('got id: ', data);
+                    if(data.id != undefined) {
+                        id = data.id;
+                        showMain();
+                    }
+                }
+            });
+        });
+
+        function getList() {
             $.ajax({
                 url: 'games/',
                 type: 'GET',
@@ -23,11 +44,21 @@
                     });
                 }
             });
-        });
+        }
+
+        function showMain() {
+            $('#main_content').css('display', 'block');
+            $('#gameScreen').css('display', 'none');
+            $('#create_game_wrapper').css('display', 'none');
+            $('#loginScreen').css('display', 'none');
+            $('#main_content').html('<h1>Point Wizard - My Games</h1><button class="logout_button" onclick=logout()>Logout</button><button id="addGame" onclick = showGameCreator()>+ New Game</button><div id="games_list"></div>');
+            getList();
+        }
 
         function showGameCreator() {
             $('#create_game_wrapper').css('display', 'block');
             $('#main_content').addClass('blur');
+            $('#loginScreen').addClass('blur');
         }
         var numPlayers = 1;
         function addPlayer() {
@@ -49,45 +80,103 @@
                     + '<button onclick=addPlayer() style="position: absolute; left: 230px">Add Player</button>'
                     + '<button id="makeGame_button" onclick=makeGame()>Create Game</button>')
             $('#main_content').removeClass('blur');
+            $('#loginScreen').removeClass('blur');
+            numPlayers = 1;
         }
+
+        function updateScore(player_id, score) {
+            $.ajax({
+                url: 'games/score/update/',
+                type: 'POST',
+                dataType: 'json',
+                data: { 
+                    player: player_id,
+                    score: score
+                },
+                success: (data) => {
+                    console.log('score update success!', data);
+                }
+            });
+        }
+        
+        function operate(player_id) {
+            //get values from DOM
+            let operation = $('#' + player_id + 'operator').val();
+            let scoreChange = Number($('#' + player_id + 'scoreChange').val());
+            let currentScore = Number($('#' + player_id + 'score').text());
+
+            //use appropriate operator
+            if (operation == '+') {
+                currentScore += scoreChange;
+                $('#' + player_id + 'recent').text('Recent: added ' + scoreChange + ' point(s)');
+            } else {
+                currentScore -= scoreChange;
+                $('#' + player_id + 'recent').text('Recent: subtracted ' + scoreChange + ' point(s)');
+            }
+            //update the score in the database for non-guest users
+            if (id != -1) {
+                updateScore(player_id, currentScore);
+            }
+            let name = '#' + player_id + 'score';
+            $(name).text(currentScore);
+        }
+
         function enterGame(game_id = 1) {
             console.log ("starting a game");
             $('#main_content').css('display', 'none');
+            $('#loginScreen').css('display', 'none');
             $('#gameScreen').css('display', 'block');
 
-             //get the game's name
-             console.log('about to get title');
-             $.ajax({
-                url: 'games/' + game_id,
-                type: 'GET',
-                dataType: 'json',
-                success: (data) => {
-                    console.log('ajax success!', data);
-                    $.each(data, (i, item) => {
-                        console.log(item);
-                        $('#gameBoard').prepend('<h1>' + item.title + '</h1>');
-                    });
-                }
-            });
-
-            //get the game's players
-            $.ajax({
-                url: 'games/players/' + game_id,
-                type: 'GET',
-                dataType: 'json',
-                success: (data) => {
-                    console.log('ajax success!', data);
-                    $.each(data, (i, item) => {
-                        console.log(item);
-                        $('#controlBox').append('<div class="playerBox" id="player' + item.player_id + '" style="border: 1px solid ' + item.color + '"><span class="name">' + item.player_name + '</span><input type="text" value="' + item.score + '"></div>');
-                    });
-                }
-            });
+            if(id == -1) {
+                $('#gameBoard').prepend('<h1>' + guestTitle + '</h1>');
+                $.each(guestPlayerNames, (i, item) => {
+                    $('#controlBox').append('<div class="playerBox" id="player' + i + '" style="border: 1px solid ' + guestColors[i] + '"><h2>' + item + ' - <span class="score" id="' + i + 'score">' + 0 + '</span></h2><div class="scoreControl"><select id="' + i + 'operator" style="background-color: ' + guestColors[i] + '"><option value="+">Add</option><option value="-">Sub</option></select><input type="number" class="scoreChange" id="' + i + 'scoreChange" value="0"><button class="operate" style="background-color: ' + guestColors[i] + '" onclick="operate(' + i + ')">Update</button></div><span class="recent" id="' + i + 'recent"></span></div>');
+                });
+            }
+            else {
+                //get the game's name
+                console.log('about to get title');
+                $.ajax({
+                    url: 'games/' + game_id,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: (data) => {
+                        console.log('ajax success!', data);
+                        //this says for each but there will only be one. I don't even know why I did it this way
+                        $.each(data, (i, item) => {
+                            console.log(item);
+                            $('#gameBoard').prepend('<h1>' + item.title + '</h1>');
+                        });
+                    }
+                });
+            
+                //get the game's players
+                $.ajax({
+                    url: 'games/players/' + game_id,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: (data) => {
+                        console.log('ajax success!', data);
+                        $.each(data, (i, item) => {
+                            console.log(item);
+                            //<button onclick="subtract(' + item.player_id + ')">-</button>
+                            $('#controlBox').append('<div class="playerBox" id="player' + item.player_id + '" style="border: 1px solid ' + item.color + '"><h2>' + item.player_name + ' - <span class="score" id="' + item.player_id + 'score">' + item.score + '</span></h2><div class="scoreControl"><select id="' + item.player_id + 'operator" style="background-color: ' + item.color + '"><option value="+">Add</option><option value="-">Sub</option></select><input type="number" class="scoreChange" id="' + item.player_id + 'scoreChange" value="0"><button class="operate" style="background-color: ' + item.color + '" onclick="operate(' + item.player_id + ')">Update</button></div><span class="recent" id="' + item.player_id + 'recent"></span></div>');
+                        });
+                    }
+                });
+            }
         }
         function leaveGame() {
             console.log ("leaving the game");
-            $('#main_content').css('display', 'block');
-            $('#gameScreen').css('display', 'none');
+            if (id == -1) {
+                $('#main_content').css('display', 'none');
+                $('#gameScreen').css('display', 'none');
+                $('#create_game_wrapper').css('display', 'none');
+                $('#loginScreen').css('display', 'block');
+            } else {
+                showMain();
+            }
+            $('#gameBoard').html('<div id="controlBox"></div><button id="exitGame" onclick=leaveGame()>X</button>');
         }
 
         function makeGame() {
@@ -105,28 +194,98 @@
             console.log(colors);
             console.log("Title:" + title);
             
+            if (id == -1) {
+                guestTitle = title;
+                guestPlayerNames = players;
+                guestColors = colors;
+                $.each(guestPlayerNames, (i, item) => {
+                    guestScores.push(0);
+                });
+                console.log(guestTitle, guestPlayerNames, guestColors, guestScores);
+                enterGame(-1);
+            } else {
+                $.ajax({
+                    url: 'games/create/',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: { 
+                        title: title,
+                        players: players,
+                        colors: colors
+                    },
+                    success: (data) => {
+                        console.log('create success!', data);
+                        console.log('game_id: ', data.game_id);
+                        enterGame(data.game_id);
+                    }
+                });
+            }
+        }
+
+        function login() {
+            if ($('#username').val() && $('#password').val()) {
+                $('#loginErr').text(''); //reset for next time
+                username = $('#username').val();
+                password = $('#password').val();
+                console.log('username ', username);
+                console.log('password ', password);
+                console.log('sending login request');
+                $.ajax({
+                    url: 'login/' + username + '/' + password,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: (data) => {
+                        console.log('Id: ', data.id);
+                        if(data.id != undefined) {
+                            id = data.id;
+                            showMain();
+                        } else {
+                            console.log('Incorrect login');
+                            $('#loginErr').text('Invalid Login. Try again!');
+                        }
+                    }
+                });
+
+            }   
+        }
+        function logout() {
+            console.log('logging out');
             $.ajax({
-                url: 'games/create/',
-                type: 'POST',
-                dataType: 'json',
-                data: { 
-                    title: title,
-                    players: players,
-                    colors: colors
-                },
-                success: (data) => {
-                    console.log('create success!', data);
-                    console.log('game_id: ', data.game_id);
-                    enterGame(data.game_id);
-                }
+               url: 'logout/',
+               type: 'POST',
+               dataType: 'json',
+               success:(data) => {
+                   id = -1;
+                    $('#main_content').css('display', 'none');
+                    $('#gameScreen').css('display', 'none');
+                    $('#create_game_wrapper').css('display', 'none');
+                    $('#loginScreen').css('display', 'block');
+               } 
             });
         }
+
     </script>
 </head>
 
 <body>
+
+    <div id="loginScreen">
+        <h1>Log In to use Point Wizard</h1>
+        <p>Or create a game as guest -> <button onclick=showGameCreator()>Create Game</button></p>
+        <br>
+        <div id="login">
+            <label>Username: </label>
+            <input type="text" id="username">
+            <label>password:</label>
+            <input type="password" id="password" required>
+            <button onclick="login()">Log In</button>
+            <br>
+            <p id="loginErr"></p>
+        </div>
+    </div>
     <div id="main_content" class="">
         <h1>Point Wizard - My Games</h1>
+        <button class="logout_button" onclick=logout()>Logout</button>
         <button id="addGame" onclick = showGameCreator()>+ New Game</button>
         <div id="games_list"></div>
     </div>
@@ -149,8 +308,7 @@
     </div>
     <div id="gameScreen">
         <div id="gameBoard">
-            <div id="controlBox">
-            </div>
+            <div id="controlBox"></div>
             <button id="exitGame" onclick=leaveGame()>X</button>
         </div>
 
