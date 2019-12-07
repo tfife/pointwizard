@@ -24,6 +24,7 @@
                 }
             });
         });
+
         function showGameCreator() {
             $('#create_game_wrapper').css('display', 'block');
             $('#main_content').addClass('blur');
@@ -53,6 +54,35 @@
             console.log ("starting a game");
             $('#main_content').css('display', 'none');
             $('#gameScreen').css('display', 'block');
+
+             //get the game's name
+             console.log('about to get title');
+             $.ajax({
+                url: 'games/' + game_id,
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    console.log('ajax success!', data);
+                    $.each(data, (i, item) => {
+                        console.log(item);
+                        $('#gameBoard').prepend('<h1>' + item.title + '</h1>');
+                    });
+                }
+            });
+
+            //get the game's players
+            $.ajax({
+                url: 'games/players/' + game_id,
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    console.log('ajax success!', data);
+                    $.each(data, (i, item) => {
+                        console.log(item);
+                        $('#controlBox').append('<div class="playerBox" id="player' + item.player_id + '" style="border: 1px solid ' + item.color + '"><span class="name">' + item.player_name + '</span><input type="text" value="' + item.score + '"></div>');
+                    });
+                }
+            });
         }
         function leaveGame() {
             console.log ("leaving the game");
@@ -63,32 +93,31 @@
         function makeGame() {
             console.log("Making game");
 
-            exitCreator();
-
             var players= $(".player").map(function() {
                 return $(this).val();
             }).get();
             var colors= $(".color").map(function() {
                 return $(this).val();
             }).get();
-
+            var title = $('#title').val();
+            exitCreator();
             console.log(players);
             console.log(colors);
-            console.log("Title:" + $('title').val());
+            console.log("Title:" + title);
             
             $.ajax({
                 url: 'games/create/',
                 type: 'POST',
                 dataType: 'json',
                 data: { 
-                    title: $('#title').val(),
+                    title: title,
                     players: players,
                     colors: colors
                 },
                 success: (data) => {
                     console.log('create success!', data);
-                    console.log("going to callback function");
-                    enterGame();
+                    console.log('game_id: ', data.game_id);
+                    enterGame(data.game_id);
                 }
             });
         }
@@ -120,12 +149,7 @@
     </div>
     <div id="gameScreen">
         <div id="gameBoard">
-            <h1>Game is loading...</h1>
-            <p>(It's not really, I just haven't done this part yet...)</p>
             <div id="controlBox">
-                <div class="playerBox"></div>
-                <div class="playerBox"></div>
-                <div class="playerBox"></div>
             </div>
             <button id="exitGame" onclick=leaveGame()>X</button>
         </div>

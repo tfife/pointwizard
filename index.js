@@ -15,12 +15,13 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 })
-app.get("/games", getGames);
+app.get("/games", getGamesByCreator);
 app.post("/games/create", createGame);
 app.get("/games/players/:id", getPlayers);
+app.get("/games/:id", getGameById);
 
 //get list of games
-function getGames(req, res) {
+function getGamesByCreator(req, res) {
     const id = 1;
     var sql = "SELECT game_id, title FROM game WHERE creator = " + id + " ORDER BY game_id DESC";
     pool.query(sql, function(err, results) {
@@ -31,6 +32,24 @@ function getGames(req, res) {
         }
         //log this to the console for debugging
         //console.log(results.rows);
+        res.json(results.rows);
+    })
+    //console.log("Getting games for id: " + id);
+}
+
+//get list of games
+function getGameById(req, res) {
+    const id = req.params.id;
+    var sql = "SELECT title, creator FROM game WHERE game_id = " + id;
+    console.log(sql);
+    pool.query(sql, function(err, results) {
+        //if an error occurred...
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+        }
+        //log this to the console for debugging
+        console.log(results.rows);
         res.json(results.rows);
     })
     //console.log("Getting games for id: " + id);
@@ -50,31 +69,38 @@ function createGame(req, res) {
             if (err) {
                 console.log("Error in query: ");
                 console.log(err);
+                result = {success: false};
+                res.json(result);
             } else {
                 game_id = results.rows[0].game_id;
-                if (req.body.players)
-                {
-                    var sql = "INSERT INTO player(player_name, game, color) VALUES";
-                    req.body.players.forEach( (item, index) => {
-                        sql = sql.concat("('"+ item + "', " + game_id + ", '" + req.body.colors[index] + "'), ");
-                    })
-                    //remove last comma and space
-                    sql = sql.slice(0, -2);
-                    console.log(sql);
-                    pool.query(sql, (err, results) => {
-                        if (err) {
-                            console.log("Error in query: ");
-                            console.log(err);
-                        }
-                    })
-                }
+                console.log(game_id);
+                var sql = "INSERT INTO player(player_name, game, color) VALUES";
+                req.body.players.forEach( (item, index) => {
+                    sql = sql.concat("('"+ item + "', " + game_id + ", '" + req.body.colors[index] + "'), ");
+                })
+                //remove last comma and space
+                sql = sql.slice(0, -2);
+                console.log(sql);
+                pool.query(sql, (err, results) => {
+                    if (err) {
+                        console.log("Error in query: ");
+                        console.log(err);
+                    }
+                    else {
+                        //let full_url = '/game/' + game_id + '/';
+                        //return res.redirect(full_url);
+                    }
+                })
+                console.log(game_id);
+                result = {success: true, game_id: game_id};
+                
+                res.json(result);
             }
         });
-        result = {success: true};
     } else {
         result = {success: false};
+        res.json(result);
     }
-    res.json(result);
 }
 
 function getPlayers(req, res) {
