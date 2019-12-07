@@ -6,6 +6,17 @@ html {
 #loginScreen {
     margin: 0 10%;
 }
+#createAccount {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+.form-group {
+    padding-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
 #main_content {
     margin: 0 10%;
     display: none;
@@ -18,7 +29,6 @@ html {
     -ms-filter: blur(2px);
     filter: blur(2px);
 }
-
 .logout_button {
     position: absolute;
     top: 20px;

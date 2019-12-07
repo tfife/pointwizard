@@ -224,7 +224,7 @@
 
         function login() {
             if ($('#username').val() && $('#password').val()) {
-                $('#loginErr').text(''); //reset for next time
+                $('#loginErr').html('Processing...'); //reset for next time
                 username = $('#username').val();
                 password = $('#password').val();
                 console.log('username ', username);
@@ -237,16 +237,19 @@
                     success: (data) => {
                         console.log('Id: ', data.id);
                         if(data.id != undefined) {
+                            $('#loginErr').html('<br>'); //reset for next time
                             id = data.id;
                             showMain();
                         } else {
                             console.log('Incorrect login');
-                            $('#loginErr').text('Invalid Login. Try again!');
+                            $('#loginErr').html('Invalid Login. Try again!');
                         }
                     }
                 });
-
-            }   
+            }
+            else {
+                $('#loginErr').html('Field(s) Missing. Try again!');
+            }
         }
         function logout() {
             console.log('logging out');
@@ -255,13 +258,37 @@
                type: 'POST',
                dataType: 'json',
                success:(data) => {
-                   id = -1;
+                    id = -1;
                     $('#main_content').css('display', 'none');
                     $('#gameScreen').css('display', 'none');
                     $('#create_game_wrapper').css('display', 'none');
                     $('#loginScreen').css('display', 'block');
                } 
             });
+        }
+        function createAccount() {
+            if($('#newUsername').val() && $('#newPassword').val() && $('#repeatPassword').val()) {
+                if($('#newPassword').val() != $('#repeatPassword').val()) {
+                    $('#createErr').html('Passwords do not match. Try again!')
+                } else {
+                    console.log('creating account');
+                    $.ajax({
+                        url: 'account/create/',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: { 
+                            username: $('#newUsername').val(),
+                            password: $('#newPassword').val()
+                        },
+                        success:(data) => {
+                            id = data.id;
+                            showMain();
+                        } 
+                    });
+                }
+            } else {
+                $('#createErr').html('Field(s) Missing. Try Again!');
+            }
         }
 
     </script>
@@ -275,12 +302,33 @@
         <br>
         <div id="login">
             <label>Username: </label>
-            <input type="text" id="username">
+            <input type="text" id="username" required>
             <label>password:</label>
             <input type="password" id="password" required>
-            <button onclick="login()">Log In</button>
+            <button onclick=login()>Log In</button>
             <br>
-            <p id="loginErr"></p>
+            <p id="loginErr"><br></p>
+        </div>
+        <br>
+        <hr>
+        <br>
+        <h2>Don't have an Account?</h2>
+        <p>Create one here to save your progress and return to games later</p>
+        <div id="createAccount">
+            <div class="form-group">
+                <label>New Username: </label>
+                <input type="text" id="newUsername">
+            </div>
+            <div class="form-group">
+                <label>New Password: </label>
+                <input type="password" id="newPassword">
+            </div>
+            <div class="form-group">
+                <label>Repeat Password: </label>
+                <input type="password" id="repeatPassword">
+            </div>
+            <button onclick=createAccount()>Create Account</button>
+            <p id="createErr"><br></p>
         </div>
     </div>
     <div id="main_content" class="">

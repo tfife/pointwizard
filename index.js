@@ -38,7 +38,7 @@ app.get("/games/:id", verifyLogin, getGameById);
 app.post("/games/score/update", verifyLogin, updateScore);
 app.get("/login/:username/:password", login);
 app.post('/logout', verifyLogin, logout);
-
+app.post('/account/create', verifyDoesNotExist, createAccount);
 
 function verifyLogin(req, res, next) {
     if(!req.session.user_id) {
@@ -206,6 +206,42 @@ function login(req, res) {
 function logout(req, res) {
     req.session.user_id = null;
     res.json({success: true});
+}
+
+function verifyDoesNotExist(req, res, next) {
+    //check to see if member already exists
+    var sql = "SELECT member_id FROM member WHERE username = '" + req.body.username + "'";
+    pool.query(sql, (err, results) => {
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+            res.json({success: false})
+        } else if (results.rows[0] != undefined) {
+            res.json({success: false})
+        } else {
+            return next();
+        }
+    })
+}
+
+function createAccount(req, res) {
+    console.log('username: ', req.body.username);
+    console.log('password: ', req.body.password);
+    sql = "INSERT INTO member(username, password) VALUES ('" + req.body.username + "', '" + req.body.password + "') RETURNING member_id";
+    pool.query(sql, (err, results) => {
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+            res.json({success: false});
+        } else if (results.rows[0] != undefined) {
+            req.session.user_id = results.rows[0].member_id;
+            console.log('create successful');
+            res.json({success: true, id: req.session.user_id});
+        } else {
+            console.log('Unable to Create Account');
+            res.json({success: false});
+        }
+    })
 }
 
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
