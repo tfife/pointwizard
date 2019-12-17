@@ -40,10 +40,34 @@
                 success: (data) => {
                     console.log('ajax success!', data);
                     $.each(data, (i, item) => {
-                        $('#games_list').append('<button class="game_card" onclick=enterGame(' + item.game_id + ')><span>' + item.title + '</span></button>');
+                        $.ajax({
+                            url: 'games/players/' + item.game_id,
+                            type: 'GET',
+                            dataType: 'json',
+                            success: (playerdata) => {
+                                console.log(playerdata)
+                                var count = 0;
+                                $.each(playerdata, (i2, player) => {
+                                    count++;
+                                })
+                                $('#games_list').append('<button class="game_card" onclick=enterGame(' + item.game_id + ')><span>' + item.title + '</span> <span style="font-size:12px">(' + count + ' Players)</span></button>');
+                            }
+                        })
                     });
                 }
             });
+        }
+        
+        function getUsername() {
+            $.ajax({
+                url: 'username/',
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    console.log(data.username);
+                    $('#dispName').text(data.username);
+                }
+            })
         }
 
         function showMain() {
@@ -51,7 +75,8 @@
             $('#gameScreen').css('display', 'none');
             $('#create_game_wrapper').css('display', 'none');
             $('#loginScreen').css('display', 'none');
-            $('#main_content').html('<h1>Point Wizard - My Games</h1><button class="logout_button" onclick=logout()>Logout</button><button id="addGame" onclick = showGameCreator()>+ New Game</button><div id="games_list"></div>');
+            $('#main_content').html('<div class="navwrap"><div id="dispName"></div><button class="logout_button" onclick=logout()>Logout</button></div><h1>Point <img src="images/wizard.png" alt="wizard" style="font-size: 10px; height: 60px; width: auto"> Wizard</h1><h2>-My Games-</h2><div class="center-wrap"><button id="addGame" onclick = showGameCreator()>+ Create New Game</button></div><br><hr><div id="games_list"></div>');
+            getUsername();
             getList();
         }
 
@@ -64,16 +89,16 @@
         function addPlayer() {
             numPlayers += 1;
             $('#extraPlayers').append('<label>Player #' + numPlayers + ' Name</label>'
-            + '<br><input class="player" type="text" value="Player ' + numPlayers + '" style="font-size: 20px">'
+            + '<br><input class="player" type="text" maxlength="10" value="Player ' + numPlayers + '" style="font-size: 20px">'
             + ' <input class="color" type="color" value="#ff00ff"><br><br>');
             console.log(numPlayers);
         }
         function exitCreator() {
             $('#create_game_wrapper').css('display', 'none');
             $('#form').html('<label>Title</label><br>'
-                    + '<input id="title" name="title" type="text" value="My Game" style="font-size: 20px; width: 300px"><br><br>'
+                    + '<input id="title" name="title" type="text" maxlength="25" value="My Game" style="font-size: 20px; width: 300px"><br><br>'
                     + '<label>Player #1 Name</label><br>'
-                    + '<input class="player" type="text" value="Player 1" style="font-size: 20px">'
+                    + '<input class="player" type="text" maxlength="10" value="Player 1" style="font-size: 20px">'
                     + '<input class="color" type="color" value="#ff00ff">'
                     + '<br><br>'
                     + '<div id="extraPlayers"></div>'
@@ -84,6 +109,17 @@
             numPlayers = 1;
         }
 
+        function exitPlayerCreator() {
+            $('#createPlayerForm').css('display', 'none');
+            $('#createPlayerForm').html('<div class="form-group">'
+                + '<label>Player Name: </label>'
+                + '<input type="text" maxlength="10" value="New Player" id="newPlayerName">'
+                + '</div><div class="form-group"><label>Color: </label>'
+                + '<input class="color" style="width: 155px" type="color" value="#ff00ff" id="newPlayerColor">'
+                + '</div><div class="form-group"><label>Starting Score: </label>'
+                + '<input type="number" value="0" id="newPlayerScore">'
+                + '</div> <div class="form-group" id="playerCreator"></div>');
+        }
         function updateScore(player_id, score) {
             $.ajax({
                 url: 'games/score/update/',
@@ -121,12 +157,54 @@
             $(name).text(currentScore);
         }
 
-        function enterGame(game_id = 1) {
+        function addPlayer_inGame(game_id, ready = false) {
+            console.log('function called');
+            if(ready == false) {
+                $('#playerCreator').html('<button onclick="addPlayer_inGame(' + game_id + ', true)">Create Player</button>');
+                $('#createPlayerForm').css('display', 'block');
+            } else {
+                if ($('#newPlayerName').val() && $('#newPlayerScore').val()) {
+                    let name = $('#newPlayerName').val();
+                    let color = $('#newPlayerColor').val();
+                    let score = $('#newPlayerScore').val();
+                    console.log('creating player', name, 'with score', score, 'and color', color, 'in game', game_id);
+                    $.ajax({
+                        url: 'games/createplayer',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            name: name,
+                            color: color,
+                            score: score,
+                            game: game_id
+                        },
+                        success: (data) => {
+                            console.log('attempted to create player', data);
+                            if(data.success == true) {
+                                console.log('player created!');
+                                $('#gameBoard').html('<div id="controlBox"></div><button id="exitGame" onclick=leaveGame()>X</button>');
+                                enterGame(game_id);
+                                exitPlayerCreator();
+                            } else {
+                                console.log('Had an error');
+                            }
+                        }
+                    });
+                }
+                else {
+                    console.log('got to this weird else statement');
+                }
+            }
+        }
+
+        function enterGame(game_id) {
             console.log ("starting a game");
             $('#main_content').css('display', 'none');
             $('#loginScreen').css('display', 'none');
             $('#gameScreen').css('display', 'block');
 
+            $('#gameBoard').prepend('<button class="deleteGame" onclick="deleteGame(' + game_id + ')">Delete Game</button>'
+               + '<button class="addPlayer_inGame" onclick="addPlayer_inGame(' + game_id + ')">Add Player</button>');
             if(id == -1) {
                 $('#gameBoard').prepend('<h1>' + guestTitle + '</h1>');
                 $.each(guestPlayerNames, (i, item) => {
@@ -135,7 +213,7 @@
             }
             else {
                 //get the game's name
-                console.log('about to get title');
+                console.log('about to get title for id ', game_id);
                 $.ajax({
                     url: 'games/' + game_id,
                     type: 'GET',
@@ -160,7 +238,7 @@
                         $.each(data, (i, item) => {
                             console.log(item);
                             //<button onclick="subtract(' + item.player_id + ')">-</button>
-                            $('#controlBox').append('<div class="playerBox" id="player' + item.player_id + '" style="border: 1px solid ' + item.color + '"><h2>' + item.player_name + ' - <span class="score" id="' + item.player_id + 'score">' + item.score + '</span></h2><div class="scoreControl"><select id="' + item.player_id + 'operator" style="background-color: ' + item.color + '"><option value="+">Add</option><option value="-">Sub</option></select><input type="number" class="scoreChange" id="' + item.player_id + 'scoreChange" value="0"><button class="operate" style="background-color: ' + item.color + '" onclick="operate(' + item.player_id + ')">Update</button></div><span class="recent" id="' + item.player_id + 'recent"></span></div>');
+                            $('#controlBox').append('<div class="playerBox" id="player' + item.player_id + '" style="border: 1px solid ' + item.color + '"><h2><span class="playername">' + item.player_name + '</span><br><span class="score" id="' + item.player_id + 'score"style="background-color: ' + item.color + '">' + item.score + '</span></h2><div class="scoreControl"><select id="' + item.player_id + 'operator" style="background-color: ' + item.color + '"><option value="+">Add</option><option value="-">Sub</option></select><input type="number" class="scoreChange" id="' + item.player_id + 'scoreChange" value="0"><button class="operate" style="background-color: ' + item.color + '" onclick="operate(' + item.player_id + ')">Update</button></div><span class="recent" id="' + item.player_id + 'recent"></span></div>');
                         });
                     }
                 });
@@ -181,6 +259,7 @@
 
         function makeGame() {
             console.log("Making game");
+            $('#createGameErr').html('<br>');
 
             var players= $(".player").map(function() {
                 return $(this).val();
@@ -214,12 +293,36 @@
                         colors: colors
                     },
                     success: (data) => {
-                        console.log('create success!', data);
-                        console.log('game_id: ', data.game_id);
-                        enterGame(data.game_id);
+                        if (data.success == true) {
+                            console.log('create success!', data);
+                            console.log('game_id: ', data.game_id);
+                            enterGame(data.game_id);
+                        } else {
+                            $('#createGameErr').html('Error in Creating Game.');
+                        }
+                        
                     }
                 });
             }
+        }
+        function deleteGame(game_id) {
+            $.ajax({
+                url: 'games/delete/',
+                type: 'POST',
+                dataType: 'json',
+                data: { 
+                    game: game_id
+                },
+                success: (data) => {
+                    if (data.success == true) {
+                        console.log('delete success!', data);
+                        leaveGame();
+                    } else {
+                        console.log('error deleting game');
+                    }
+                    
+                }
+            });
         }
 
         function login() {
@@ -302,9 +405,9 @@
         <br>
         <div id="login">
             <label>Username: </label>
-            <input type="text" id="username" required>
+            <input type="text" maxlength="20" id="username" required>
             <label>password:</label>
-            <input type="password" id="password" required>
+            <input type="password" maxlength="20" id="password" required>
             <button onclick=login()>Log In</button>
             <br>
             <p id="loginErr"><br></p>
@@ -317,11 +420,11 @@
         <div id="createAccount">
             <div class="form-group">
                 <label>New Username: </label>
-                <input type="text" id="newUsername">
+                <input type="text" maxlength="20" id="newUsername">
             </div>
             <div class="form-group">
                 <label>New Password: </label>
-                <input type="password" id="newPassword">
+                <input type="password" maxlength="20" id="newPassword">
             </div>
             <div class="form-group">
                 <label>Repeat Password: </label>
@@ -332,10 +435,6 @@
         </div>
     </div>
     <div id="main_content" class="">
-        <h1>Point Wizard - My Games</h1>
-        <button class="logout_button" onclick=logout()>Logout</button>
-        <button id="addGame" onclick = showGameCreator()>+ New Game</button>
-        <div id="games_list"></div>
     </div>
     <div id="create_game_wrapper">
         <div id="create_game">
@@ -343,14 +442,15 @@
             <button id="exitCreator" onclick=exitCreator()>X</button>
                 <div id="form">
                     <label>Title</label><br>
-                    <input id="title" name="title" type="text" value="My Game" style="font-size: 20px; width: 300px"><br><br>
+                    <input id="title" name="title" type="text" maxlength="25" value="My Game" style="font-size: 20px; width: 300px"><br><br>
                     <label>Player #1 Name</label><br>
-                    <input class="player" type="text" value="Player 1" style="font-size: 20px">
+                    <input class="player" type="text" maxlength="10" value="Player 1" style="font-size: 20px">
                     <input class="color" type="color" value="#ff00ff">
                     <br><br>
                     <div id="extraPlayers"></div>
                     <button onclick=addPlayer() style="position: absolute; left: 230px">Add Player</button>
                     <button onclick=makeGame() id="makeGame_button">Create Game</button>
+                    <p id="createGameErr"><br></p>
                 </div>
         </div>
     </div>
@@ -359,7 +459,22 @@
             <div id="controlBox"></div>
             <button id="exitGame" onclick=leaveGame()>X</button>
         </div>
-
+    </div>
+    <div id="createPlayerForm">
+        <div class="form-group">
+            <label>Player Name: </label>
+            <input type="text" maxlength="10" value="New Player" id="newPlayerName">
+        </div>
+        <div class="form-group">    
+            <label>Color: </label>
+            <input class="color" style="width: 155px" type="color" value="#ff00ff" id="newPlayerColor">
+        </div>
+        <div class="form-group">
+            <label>Starting Score: </label>
+            <input type="number" value="0" id="newPlayerScore">
+        </div>
+        <div class="form-group" id="playerCreator">
+        </div>
     </div>
 
 </body>

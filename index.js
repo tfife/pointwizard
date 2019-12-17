@@ -30,7 +30,7 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 })
-app.get("/id", getId)
+app.get("/id", verifyLogin, getId)
 app.get("/games", verifyLogin, getGamesByCreator);
 app.post("/games/create", verifyLogin, createGame);
 app.get("/games/players/:id", verifyLogin, getPlayers);
@@ -39,6 +39,9 @@ app.post("/games/score/update", verifyLogin, updateScore);
 app.get("/login/:username/:password", login);
 app.post('/logout', verifyLogin, logout);
 app.post('/account/create', verifyDoesNotExist, createAccount);
+app.get('/username', verifyLogin, getUsername);
+app.post('/games/createPlayer', verifyLogin, createPlayer);
+app.post('/games/delete', verifyLogin, deleteGame)
 
 function verifyLogin(req, res, next) {
     if(!req.session.user_id) {
@@ -49,20 +52,27 @@ function verifyLogin(req, res, next) {
     }
 }
 
+function getUsername(req, res) {
+    const id = req.session.user_id;
+    var sql = "SELECT username FROM member WHERE member_id = " + id;
+    pool.query(sql, function(err, results) {
+        //if an error occurred...
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+        }
+        //log this to the console for debugging
+        //console.log(results.rows);
+        res.json({username: results.rows[0].username});
+    })
+}
 
 function getId(req, res) {
-    if(!req.session.user_id) {
-        res.json({success: false});
-    } else {
-        res.json({success: true, id: req.session.user_id});
-    }
+    res.json({success: true, id: req.session.user_id});
 }
 
 //get list of games
 function getGamesByCreator(req, res) {
-    if (!req.session.user_id) {
-        res.json({success: false});
-    }
     const id = req.session.user_id;
     var sql = "SELECT game_id, title FROM game WHERE creator = " + id + " ORDER BY game_id DESC";
     pool.query(sql, function(err, results) {
@@ -83,7 +93,7 @@ function getGameById(req, res) {
     if(!req.session.user_id) {
         res.json({success: false});
     }
-    const id = req.session.user_id;
+    const id = req.params.id;
     var sql = "SELECT title, creator FROM game WHERE game_id = " + id;
     console.log(sql);
     pool.query(sql, function(err, results) {
@@ -97,6 +107,39 @@ function getGameById(req, res) {
         res.json(results.rows);
     })
     //console.log("Getting games for id: " + id);
+}
+
+function deleteGame(req, res) {
+    let game = req.body.game;
+    let sql = "DELETE FROM game WHERE game_id = " + game;
+    pool.query(sql, (err, results) => {
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+            result = {success: false};
+            res.json(result);
+        } else {
+            res.json({success: true});
+        }
+    })
+}
+
+function createPlayer(req, res) {
+    let name = req.body.name;
+    let color = req.body.color;
+    let score = req.body.score;
+    let game = req.body.game;
+    let sql = "INSERT INTO player(player_name, score, color, game) VALUES ('" + name + "', " + score + ", '" + color + "', " + game + ")"
+    pool.query(sql, (err, results) => {
+        if (err) {
+            console.log("Error in query: ");
+            console.log(err);
+            result = {success: false};
+            res.json(result);
+        } else {
+            res.json({success: true});
+        }
+    })
 }
 
 //create a new game
